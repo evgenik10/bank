@@ -1,0 +1,94 @@
+import Foundation
+
+protocol BankServicing {
+    var user: User { get }
+    func fetchAccounts() async throws -> [Account]
+    func fetchCards() async throws -> [Card]
+    func fetchBudgets() async throws -> [Budget]
+    func fetchDeliveryAssignments() async throws -> [CardDeliveryAssignment]
+    func performTransfer(amount: Decimal, from source: Account, to destination: Account) async throws -> TransferResult
+    func toggleCardFreeze(_ card: Card) async throws -> Card
+    func updateDeliveryAssignment(_ assignment: CardDeliveryAssignment, to status: CardDeliveryAssignment.Status) async throws -> CardDeliveryAssignment
+}
+
+struct TransferResult {
+    var success: Bool
+    var message: String
+}
+
+final class MockBankService: BankServicing {
+    let user: User
+    private var accounts: [Account]
+    private var cards: [Card]
+    private var budgets: [Budget]
+    private var deliveries: [CardDeliveryAssignment]
+
+    init(user: User = .mockCustomer,
+         accounts: [Account] = Account.sampleAccounts,
+         cards: [Card] = Card.sampleCards,
+         budgets: [Budget] = Budget.sampleBudgets,
+         deliveries: [CardDeliveryAssignment] = .sampleAssignments) {
+        self.user = user
+        self.accounts = accounts
+        self.cards = cards
+        self.budgets = budgets
+        self.deliveries = deliveries
+    }
+
+    func fetchAccounts() async throws -> [Account] {
+        accounts
+    }
+
+    func fetchCards() async throws -> [Card] {
+        cards
+    }
+
+    func fetchBudgets() async throws -> [Budget] {
+        budgets
+    }
+
+    func fetchDeliveryAssignments() async throws -> [CardDeliveryAssignment] {
+        deliveries
+    }
+
+    func performTransfer(amount: Decimal, from source: Account, to destination: Account) async throws -> TransferResult {
+        guard let sourceIndex = accounts.firstIndex(of: source),
+              let destinationIndex = accounts.firstIndex(of: destination) else {
+            return TransferResult(success: false, message: "Accounts not found")
+        }
+
+        guard accounts[sourceIndex].balance >= amount else {
+            return TransferResult(success: false, message: "Insufficient funds")
+        }
+
+        accounts[sourceIndex].balance -= amount
+        accounts[destinationIndex].balance += amount
+
+        return TransferResult(success: true, message: "Transfer successful")
+    }
+
+    func toggleCardFreeze(_ card: Card) async throws -> Card {
+        guard let index = cards.firstIndex(of: card) else { return card }
+        cards[index].isFrozen.toggle()
+        return cards[index]
+    }
+
+    func updateDeliveryAssignment(_ assignment: CardDeliveryAssignment, to status: CardDeliveryAssignment.Status) async throws -> CardDeliveryAssignment {
+        guard let index = deliveries.firstIndex(of: assignment) else {
+            throw BackendError.assignmentNotFound
+        }
+
+        guard deliveries[index].status.canTransition(to: status) else {
+            return deliveries[index]
+        }
+
+        deliveries[index].status = status
+        deliveries.sort { lhs, rhs in
+            if lhs.status.sortPriority != rhs.status.sortPriority {
+                return lhs.status.sortPriority < rhs.status.sortPriority
+            }
+            return lhs.scheduledDate < rhs.scheduledDate
+        }
+        return deliveries[index]
+    }
+}
