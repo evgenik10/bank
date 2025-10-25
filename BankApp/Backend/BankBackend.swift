@@ -9,6 +9,7 @@ enum BackendError: LocalizedError {
     case cardNotFound
     case verificationRequired
     case invalidVerificationCode
+    case invalidRepresentativeCode
 
     var errorDescription: String? {
         switch self {
@@ -28,12 +29,14 @@ enum BackendError: LocalizedError {
             return "Please verify your card before continuing."
         case .invalidVerificationCode:
             return "The SMS code you entered is incorrect."
+        case .invalidRepresentativeCode:
+            return "The team access code is invalid."
         }
     }
 }
 
 protocol BankBackend {
-    func register(name: String, email: String, password: String, role: User.Role, cardNumber: String?) async throws -> User
+    func register(name: String, email: String, password: String, role: User.Role, cardNumber: String?, representativeCode: String?) async throws -> User
     func login(email: String, password: String) async throws -> User
     func fetchAccounts(for userID: UUID) async throws -> [Account]
     func fetchCards(for userID: UUID) async throws -> [Card]
@@ -73,7 +76,9 @@ actor InMemoryBankBackend: BankBackend {
         seed()
     }
 
-    func register(name: String, email: String, password: String, role: User.Role, cardNumber: String?) async throws -> User {
+    private let representativeAccessCodes: Set<String> = ["REP-2024"]
+
+    func register(name: String, email: String, password: String, role: User.Role, cardNumber: String?, representativeCode: String?) async throws -> User {
         let normalizedEmail = email.lowercased()
         guard usersByEmail[normalizedEmail] == nil else {
             throw BackendError.emailAlreadyUsed
@@ -109,6 +114,10 @@ actor InMemoryBankBackend: BankBackend {
             budgetsByUser[user.id] = Budget.sampleBudgets
 
         case .representative:
+            let normalizedCode = representativeCode?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() ?? ""
+            guard representativeAccessCodes.contains(normalizedCode) else {
+                throw BackendError.invalidRepresentativeCode
+            }
             accountsByUser[user.id] = []
             cardsByUser[user.id] = []
             budgetsByUser[user.id] = []

@@ -314,14 +314,15 @@ struct AuthenticationView: View {
                     validationError = "Please enter your name."
                     return
                 }
-                guard representativeCode.uppercased() == "REP-2024" else {
+                guard representativeCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() == "REP-2024" else {
                     validationError = "Invalid team access code."
                     return
                 }
                 sessionManager.register(name: trimmedName,
                                         email: trimmedEmail,
                                         password: trimmedPassword,
-                                        role: .representative)
+                                        role: .representative,
+                                        representativeCode: representativeCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased())
             }
         }
     }

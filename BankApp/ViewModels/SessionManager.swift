@@ -38,13 +38,18 @@ final class SessionManager: ObservableObject {
         }
     }
 
-    func register(name: String, email: String, password: String, role: User.Role, cardNumber: String? = nil) {
+    func register(name: String, email: String, password: String, role: User.Role, cardNumber: String? = nil, representativeCode: String? = nil) {
         authError = nil
         authState = .authenticating
 
         Task {
             do {
-                let user = try await backend.register(name: name, email: email, password: password, role: role, cardNumber: cardNumber)
+                let user = try await backend.register(name: name,
+                                                      email: email,
+                                                      password: password,
+                                                      role: role,
+                                                      cardNumber: cardNumber,
+                                                      representativeCode: representativeCode)
                 await startSession(for: user)
             } catch {
                 authState = .unauthenticated
