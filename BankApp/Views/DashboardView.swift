@@ -58,6 +58,9 @@ struct DashboardView: View {
                     .padding(.horizontal, 20)
                 }
                 .scrollIndicators(.hidden)
+                .refreshable {
+                    await viewModel.loadData()
+                }
             }
             .navigationTitle("T•Bank")
             .toolbarBackground(Color.tBankBlack, for: .navigationBar)
